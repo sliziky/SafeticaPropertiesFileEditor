@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "PropertiesFileEditor": {
+      "commandName": "Project",
+      "commandLineArgs": "add testFile.txt property3=value3"
+    }
+  }
+}
