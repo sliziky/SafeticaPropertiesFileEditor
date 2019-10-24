@@ -2,7 +2,7 @@
   "profiles": {
     "PropertiesFileEditor": {
       "commandName": "Project",
-      "commandLineArgs": "add testFile.txt property3=value3"
+      "commandLineArgs": "remove testFile.txt property1"
     }
   }
 }
