@@ -8,169 +8,174 @@ namespace PropertiesFileEditor
 {
     class PropertyParser
     {
-        private string operation;
-        private string fileName;
-        private string property;
-        public PropertyParser(string operation, string fileName, string property)
+        private string _operation;
+        private string _fileName;
+        private string _property;
+        private static string TEMP_FILE = "tmpFile.txt";
+        private string _readLine;
+        private StreamWriter _writer;
+        private StreamReader _reader;
+
+
+    public PropertyParser(string operation, string fileName, string property)
         {
-            this.operation = operation;
-            this.fileName = fileName;
-            this.property = property;
+            _operation = operation;
+            _fileName = fileName;
+            _property = property;
+            _reader = new StreamReader(_fileName);
+            _writer = new StreamWriter(TEMP_FILE, true);
         }
 
         public void Parse() {
-            if (fileName.EndsWith(".txt"))
+            if (_fileName.EndsWith(".txt"))
             {
-                switch (operation)
+                switch (_operation)
                 {
-                    case "add": AddProperty(property); break;
-                    case "edit": EditProperty(property); break;
-                    case "remove": RemoveProperty(property); break;
+                    case "add": AddProperty(); break;
+                    case "edit": EditProperty(); break;
+                    case "remove": RemoveProperty(); break;
                 }
             }
-            finalize();
+            Finalize();
         }
 
-        private void finalize() {
-            File.Delete(fileName);
-            File.Move("file.txt", fileName);
+        private void Finalize() {
+            File.Delete(_fileName);
+            File.Move(TEMP_FILE, _fileName);
+            _reader.Close();
+            _writer.Close();
         }
 
-        private void AddProperty(string property)
+        private void AddProperty()
         {
-            string path = @"C:\Users\Peter\Source\Repos\PropertiesFileEditor\PropertiesFileEditor\bin\Debug\netcoreapp3.0\" + fileName;
-            string readLine = "";
             bool footerFound = false;
-            const string tempFile = "file.txt";
 
-
-            using StreamWriter writer = new StreamWriter(tempFile, true);
-            using StreamReader reader = new StreamReader(path);
-            while ((readLine = reader.ReadLine()) != null)
+            while ((_readLine = _reader.ReadLine()) != null)
             {
-             
-                if (readLine.Contains("[SafeticaProperties]"))
+                bool onLastLine = _reader.EndOfStream;
+                if (_readLine.Contains("[SafeticaProperties]"))
                 {
-                    Tuple<string, string> splitLine = SplitLineBeforeAfterHeader(readLine);
-                    string beforeHeader = splitLine.Item1;
-                    string afterHeader = splitLine.Item2;
-                    if (reader.EndOfStream)
-                    {
-                        afterHeader += "\\n" + property;
-                    }
-                    writer.Write(beforeHeader);
-                    writer.Write("[SafeticaProperties]");
-                    writer.WriteLine(afterHeader); 
+                    ParseLineContainingProperties(Operation.ADD);
                     footerFound = true;
                 }
                 else
                 {
                     if (!footerFound)
                     {
-                        if (reader.EndOfStream)
+                        if (onLastLine)
                         {
-                            writer.Write(readLine + createFooter());
+                            _writer.Write(_readLine + createFooter());
                         }
                         else
                         {
-                            writer.WriteLine(readLine);
-                        }
-                    }
-                    else
-                    {
-                        if (reader.EndOfStream)
-                        {
-                            writer.WriteLine(readLine + property);
-                        }
-                        else
-                        {
-                            writer.WriteLine(readLine);
+                            _writer.WriteLine(_readLine);
                         }
                     }
                 }
             }
         }
-        private void EditProperty(string property)
-        {
-            string path = @"C:\Users\Peter\Source\Repos\PropertiesFileEditor\PropertiesFileEditor\bin\Debug\netcoreapp3.0\" + fileName;
-            string readLine = "";
-            bool footerFound = false;
-            const string tempFile = "file.txt";
+        private void EditProperty() {
+            while ((_readLine = _reader.ReadLine()) != null) {
+                parseLine(Operation.EDIT);
+            }
+        }
 
+        private void RemoveProperty() {
+            while ((_readLine = _reader.ReadLine()) != null) {
+                parseLine(Operation.REMOVE);
+            }
+        }
 
-            using StreamWriter writer = new StreamWriter(tempFile, true);
-            using StreamReader reader = new StreamReader(path);
-            while ((readLine = reader.ReadLine()) != null)
+        private void ParseLineContainingProperties(Operation operation) {
+            Tuple<string, string> splitLine = SplitLineBeforeAfterHeader(_readLine);
+            string beforeHeader = splitLine.Item1;
+            string afterHeader = splitLine.Item2;
+
+            _writer.Write(beforeHeader);
+            _writer.Write("[SafeticaProperties]");
+
+            afterHeader = RemoveBeginningNewlineChar(afterHeader);
+            if (String.IsNullOrEmpty(afterHeader))
             {
-                if (readLine.Contains("[SafeticaProperties]"))
-                {
-                    Tuple<string, string> splitLine = SplitLineBeforeAfterHeader(readLine);
-                    string beforeHeader = splitLine.Item1;
-                    string afterHeader = splitLine.Item2.Substring(2);
-                    string[] properties = afterHeader.Split("\\n");
-                    writer.Write(beforeHeader + "[SafeticaProperties]");
-                    foreach (string p in properties)
-                    {
-                        var s = SplitPropertyByEquals(p);
-                        var s2 = SplitPropertyByEquals(property);
-                        if (s.Item1.Equals(s2.Item1))
-                        {
-                            writer.Write("\\n" + property);
-                            continue;
-                        }
-                        writer.Write("\\n" + p);
-                    }
-
-
+                if (operation == Operation.ADD) {
+                    _writer.Write("\\n" + _property);        
                 }
-                else
-                {
-                    writer.WriteLine(readLine);
-                }
+                return;
             }
 
-
-        }
-
-        private void RemoveProperty(string property) {
-            string path = @"C:\Users\Peter\Source\Repos\PropertiesFileEditor\PropertiesFileEditor\bin\Debug\netcoreapp3.0\" + fileName;
-            string readLine = "";
-            bool footerFound = false;
-            const string tempFile = "file.txt";
-
-
-            using StreamWriter writer = new StreamWriter(tempFile, true);
-            using StreamReader reader = new StreamReader(path);
-            while ((readLine = reader.ReadLine()) != null) {
-                if (readLine.Contains("[SafeticaProperties]"))
+            IList<PropertyItem> properties = ParseProperties(afterHeader);
+            foreach (PropertyItem propertyItem in properties)
+            {
+                if (operation == Operation.REMOVE)
                 {
-                    Tuple<string, string> splitLine = SplitLineBeforeAfterHeader(readLine);
-                    string beforeHeader = splitLine.Item1;
-                    string afterHeader = splitLine.Item2;
-                    string[] properties = afterHeader.Split("\\n");
-                    writer.Write(beforeHeader + "[SafeticaProperties]");
-                    if (afterHeader.Length < 2)
+                    CheckForPropertyRemoval(propertyItem);
+                }
+
+                if (operation == Operation.EDIT)
+                {
+                    CheckForPropertyEdit(propertyItem);
+                }
+
+                if (operation == Operation.ADD) {
+
+                    _writer.Write("\\n" + afterHeader);
+
+                    if (_reader.EndOfStream)
                     {
+                        _writer.WriteLine("\\n" + _property);
                         return;
                     }
-                    foreach (string p in properties)
-                    {
-                        var s = SplitPropertyByEquals(p);
-                        if (s.Item1.Equals(property))
-                        {
-                            continue;
-                        }
-                        writer.Write("\\n" + p);
-                    }
-                }
-                else {
-                    writer.WriteLine(readLine);
                 }
             }
         }
+
+        public void CheckForPropertyRemoval(PropertyItem propertyItem) {
+            PropertyItem propertyToBeRemoved = new PropertyItem(_property, "");
+            if (propertyItem == propertyToBeRemoved)
+            {
+                return;
+            }
+            _writer.Write("\\n" + propertyItem.Property);
+        }
+
+        public void CheckForPropertyEdit(PropertyItem propertyItem) {
+            PropertyItem propertyToBeEditted = SplitPropertyByEquals(_property);
+            _writer.Write("\\n");
+            if (propertyItem == propertyToBeEditted)
+            {
+                _writer.Write(propertyToBeEditted);
+                return;
+            }
+            _writer.Write(propertyItem);
+        }
+
+
+        private void parseLine(Operation operation) {
+            if (_readLine.Contains("[SafeticaProperties]") )
+            {
+                ParseLineContainingProperties(operation);
+            }
+            else
+            {
+                _writer.WriteLine(_readLine);
+            }
+
+        }
+
+
+        public IList<PropertyItem> ParseProperties(string line) {
+            string[] properties = line.Split("\\n");
+            IList<PropertyItem> splitProperties = new List<PropertyItem>();
+            foreach (string property in properties) {
+                splitProperties.Add(SplitPropertyByEquals(property));
+            }
+            return splitProperties;
+
+        } 
+
         public string createFooter()
         {
-            return "[SafeticaProperties]\\n" + property;
+            return "[SafeticaProperties]\\n" + _property;
         }
 
         public Tuple<string, string> SplitLineBeforeAfterHeader(string line) {
@@ -180,11 +185,25 @@ namespace PropertiesFileEditor
             return new Tuple<string, string>(beforeProperties, afterProperties);
         }
 
-        public Tuple<string, string> SplitPropertyByEquals(string property) {
+        public PropertyItem SplitPropertyByEquals(string property) {
             int index = property.IndexOf('=');
             string key = property.Substring(0, index);
             string value = property.Substring(index + 1);
-            return new Tuple<string, string>(key, value);
+            return new PropertyItem(key, value);
         }
+
+
+        public string RemoveBeginningNewlineChar(string str) {
+            if (str.Length >= 2)
+            {
+                return str.Substring(2);
+            }
+            else
+            {
+                return "";
+            }
+        }
+
+
     }
 }
