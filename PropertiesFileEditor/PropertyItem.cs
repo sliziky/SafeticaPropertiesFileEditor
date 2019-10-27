@@ -8,6 +8,13 @@ namespace PropertiesFileEditor {
             Value = value;
         }
 
+        public PropertyItem(string property)
+        {
+            string[] p = property.Split("=");
+            Property = p[0];
+            Value = p[1];
+        }
+
         public override bool Equals( object obj ) {
             return this.Equals( obj as PropertyItem );
         }
