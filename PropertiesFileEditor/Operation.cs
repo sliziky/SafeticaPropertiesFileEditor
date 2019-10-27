@@ -1,8 +1,6 @@
 ﻿using System;
-namespace PropertiesFileEditor
-{
-    enum Operation
-    {
+namespace PropertiesFileEditor {
+    enum Operation {
         ADD,
         EDIT,
         REMOVE

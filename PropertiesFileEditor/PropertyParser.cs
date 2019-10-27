@@ -11,44 +11,97 @@ namespace PropertiesFileEditor {
         private string _property;
         private static string TEMP_FILE = "tmpFile.txt";
         private static string KEYWORD = "[SafeticaProperties]";
+        private static int BUFFER_VALUE = 1024;
         private string _readLine;
-        private StreamWriter _writer;
-        private StreamReader _reader;
+        private BinaryWriter _writer;
+        private BinaryReader _reader;
+        private byte[] _buffer = new byte[ BUFFER_VALUE ];
 
 
         public PropertyParser( string operation, string fileName, string property ) {
             _operation = operation;
             _fileName = fileName;
             _property = property;
-            _reader = new StreamReader( _fileName );
-            _writer = new StreamWriter( TEMP_FILE, true );
+            _reader = new BinaryReader( new FileStream( _fileName, FileMode.Open ));
+            _writer = new BinaryWriter( File.Open( TEMP_FILE, FileMode.OpenOrCreate ) );
         }
 
-
-
         public void Parse() {
-            Operation operation = new Operation();
-            if( _fileName.EndsWith( ".txt" ) ) {
-                switch( _operation ) {
-                    case "add": operation = Operation.ADD; break;
-                    case "edit": operation = Operation.EDIT; break;
-                    case "remove": operation = Operation.REMOVE; break;
-                }
-                ParseFile( operation );
-            }
+            //Operation operation = new Operation();
+            //if( _fileName.EndsWith( ".txt" ) ) {
+            //    switch( _operation ) {
+            //        case "add": operation = Operation.ADD; break;
+            //        case "edit": operation = Operation.EDIT; break;
+            //        case "remove": operation = Operation.REMOVE; break;
+            //    }
+            //    ParseFile( operation );
+            //}
+            byte[] lastBytes = ReadLastBytes(1024);
+            string result = Encoding.Default.GetString( lastBytes );
+          //  Console.WriteLine( result );
+            doThis();
+            string newString = "This is new string";
             Finalize();
         }
 
         private void Finalize() {
-            File.Delete( _fileName );
-            File.Move( TEMP_FILE, _fileName );
+            //File.Delete( _fileName );
+            //File.Move( TEMP_FILE, _fileName );
             _reader.Close();
             _writer.Close();
         }
 
+        private void doThis() {
+            using( FileStream fileStream = new FileStream( _fileName, FileMode.Open, FileAccess.Read ) ) {
+                byte[] buffer = new byte[ 1024 ];
+                int read = 0;
+                double fileLength = new FileInfo( _fileName ).Length;
+                while( fileLength >= 2048 ) { // skip junk
+                    fileStream.Read( buffer, 0, 1024 );
+                    _writer.Write( Encoding.UTF8.GetString( buffer, 0, buffer.Length ) ) ;
+                    fileLength -= 1024;
+                }
+                fileStream.Read( buffer, 0, (int)fileLength - 1024 ); // another junk
+                fileStream.Read( buffer, 0, 1024 ); // most important -> this we will replace with properties
+                Console.WriteLine( Encoding.UTF8.GetString( buffer, 0, buffer.Length ) );
+            }
+        }
+
+
+        private byte[] ReadLastBytes(int numberOfBytes) {
+            byte[] bytes = new byte[ numberOfBytes ];
+            double fileLength = new FileInfo( _fileName ).Length;
+            if( fileLength > numberOfBytes ) {
+                _reader.BaseStream.Seek( -numberOfBytes, SeekOrigin.End );
+                _reader.Read( bytes, 0, numberOfBytes );
+            }
+            else {
+                bytes = File.ReadAllBytes( _fileName );
+            }
+            return bytes;
+        }
+
         private void ParseFile( Operation operation ) {
-            while( ( _readLine = _reader.ReadLine() ) != null ) {
-                parseLine( operation );
+            byte[] buffer = new byte[ BUFFER_VALUE ];
+            using( var reader = new StreamReader( _fileName ) ) {
+                if( reader.BaseStream.Length > 1024 ) {
+                    var x = reader.BaseStream.Seek( -1024, SeekOrigin.End );
+                }
+
+                //reader.Read(buffer, )
+                string line;
+                while( ( line = reader.ReadLine() ) != null ) {
+                    Console.WriteLine( line );
+                }
+            }
+        }
+
+        private void parseLine( Operation operation ) {
+            if( _readLine.Contains( KEYWORD ) ) {
+                ParseLineContainingProperties( operation );
+            }
+            else {
+                _writer.Write( _buffer );
             }
         }
 
@@ -56,7 +109,6 @@ namespace PropertiesFileEditor {
             Tuple<string, string> splitLine = SplitLineBeforeAfterHeader( _readLine );
             string beforeHeader = splitLine.Item1;
             string afterHeader = splitLine.Item2;
-
             _writer.Write( beforeHeader );
             _writer.Write( KEYWORD );
 
@@ -82,8 +134,8 @@ namespace PropertiesFileEditor {
 
                     _writer.Write( "\\n" + afterHeader );
 
-                    if( _reader.EndOfStream ) {
-                        _writer.WriteLine( "\\n" + _property );
+                    if( _buffer.Length < 1024 ) {
+                        _writer.Write( _property );
                         return;
                     }
                 }
@@ -102,22 +154,14 @@ namespace PropertiesFileEditor {
             PropertyItem propertyToBeEditted = SplitPropertyByEquals( _property );
             _writer.Write( "\\n" );
             if( propertyItem == propertyToBeEditted ) {
-                _writer.Write( propertyToBeEditted );
+                _writer.Write( propertyToBeEditted.ToString() );
                 return;
             }
-            _writer.Write( propertyItem );
+            _writer.Write( propertyItem.ToString() );
         }
 
 
-        private void parseLine( Operation operation ) {
-            if( _readLine.Contains( KEYWORD ) || _reader.EndOfStream ) {
-                ParseLineContainingProperties( operation );
-            }
-            else {
-                _writer.WriteLine( _readLine );
-            }
 
-        }
 
 
         public IList<PropertyItem> ParseProperties( string line ) {
