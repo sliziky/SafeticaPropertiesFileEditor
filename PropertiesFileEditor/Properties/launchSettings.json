@@ -2,7 +2,7 @@
   "profiles": {
     "PropertiesFileEditor": {
       "commandName": "Project",
-      "commandLineArgs": "add testDll.dll property1=value1"
+      "commandLineArgs": "add testFile.dll property1=value1"
     }
   }
 }
