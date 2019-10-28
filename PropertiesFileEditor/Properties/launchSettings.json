@@ -2,7 +2,7 @@
   "profiles": {
     "PropertiesFileEditor": {
       "commandName": "Project",
-      "commandLineArgs": "edit testFile.txt property3=sasa"
+      "commandLineArgs": "add testDll.dll property1=value1"
     }
   }
 }
