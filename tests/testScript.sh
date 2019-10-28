@@ -2,6 +2,7 @@
 file=testFile.dll
 rm testFile.dll
 cp PropertiesFileEditor.dll testFile.dll
+
 ./PropertiesFileEditor remove testFile.dll property1
 echo REMOVE WITHOUT FOOTER
 original_size=$(wc -c < "$file")
@@ -29,7 +30,6 @@ if [ $size -eq $new_size ]; then
 else
     echo Wrong
 fi
-
 new_size=$(($new_size - 4))
 ./PropertiesFileEditor edit testFile.dll property1=v1
 echo EDITTING property1=v1 
