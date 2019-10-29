@@ -13,6 +13,8 @@ namespace PropertiesFileEditor {
     /// d. Iterate through this array and do the operation corresponding to the input
     ///
     /// I used a testScript.sh to do basic testing while refactoring
+    ///
+    /// If you want to run the script then you have to move it into the folder with the executable
     public class PropertyParser : IDisposable {
         private readonly Operation _operation;
         private readonly string _fileName;
