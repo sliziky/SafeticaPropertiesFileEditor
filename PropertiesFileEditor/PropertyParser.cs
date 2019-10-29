@@ -2,10 +2,17 @@
 using System.IO;
 using System.Text;
 
+
 namespace PropertiesFileEditor {
-    /// When speaking of header - we mean header of the footer
-    /// 
-    /// 
+    /// The main logic of parsing footer is :
+    /// a. Try to read the last 1024 B of the file, since we know that the footer can't be longer
+    /// b. Find the header in those 1024 B and split these bytes into 2 parts - 1. before header, 2. after header
+    /// c. Write "before header" part back into the file
+    /// d. Parse the "after header" part
+    /// e. Split the footer into the array of strings in form of "properties=value"
+    /// d. Iterate through this array and do the operation corresponding to the input
+    ///
+    /// I used a testScript.sh to do basic testing while refactoring
     public class PropertyParser : IDisposable {
         private readonly Operation _operation;
         private readonly string _fileName;
@@ -160,7 +167,7 @@ namespace PropertiesFileEditor {
         private void BuildNewFooter( string footer ) {
 
             string[] splitProperties = SplitProperties( footer );
-            string newFooter = "[SafeticaProperties]";
+            string newFooter = Header;
             for( int i = 1; i < splitProperties.Length; ++i ) {
                 PropertyItem item = SplitPropertyByEquals( splitProperties[ i ] );
                 if( _propertyItem == item ) {
