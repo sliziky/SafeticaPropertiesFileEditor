@@ -2,6 +2,9 @@
 
 namespace PropertiesFileEditor
 {
+    /// <summary>
+    /// Represents Property Item which consists of &lt;Property&gt;=&lt;Value&gt;
+    /// </summary>
     public class PropertyItem
     {
         public string Property { get; set; }
